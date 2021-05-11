@@ -1,6 +1,8 @@
 import express from "express";
 import logger from "./logger";
 
+import NodeCache from "node-cache";
+
 import {getUnmergedBranches,getFirstCommit,getCommitDate} from "./git";
 
 const app = express();
@@ -12,9 +14,31 @@ const port = 8080; // default port to listen
 //     res.send( "Hello world!" );
 // } );
 
+const cache = new NodeCache({
+    stdTTL: 60, maxKeys: 10
+});
+
+// function getOrGenerate(key: string, func: () => any) {
+//     let value = cache.get(key);
+//     if ( value == undefined ){
+//         value = func();
+//         cache.set(key, value);
+//     }
+//     return value;
+// }
+
 app.get( "/workspaces/:workspace", ( req, res ) => {
     const origin = "origin/development";
     const workspace = req.params.workspace;
+    const cacheKey = `workspaces/${workspace}`;
+
+    const value = cache.get(cacheKey);
+    if (value != null) {
+        logger.debug(`Answering ${workspace} from cache`);
+        res.send(value);
+        return;
+    }
+
     getUnmergedBranches(workspace)
     .then(brchs=>{
         const promises = brchs.map(dest=>{
@@ -36,6 +60,7 @@ app.get( "/workspaces/:workspace", ( req, res ) => {
             });
         });
         Promise.all(promises).then((results) => {
+            cache.set(cacheKey, results);
             res.send(results);
         })
     }).catch(err=>{
