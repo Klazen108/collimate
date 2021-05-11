@@ -1,4 +1,4 @@
-import { exec } from "child_process";
+import { exec, ExecOptions } from "child_process";
 import logger from "./logger";
 
 export interface CommitEntry {
@@ -9,19 +9,8 @@ export interface CommitEntry {
 export function getUnmergedBranches(workspace : string) : Promise<string[]> {
     return new Promise((res,rej)=>{
         const cmd = 'GIT_SSH_COMMAND="ssh -i ./id_rsa" git --no-pager branch -r --no-merged development';
-
         logger.debug("getUnmergedBranches",{cmd,cwd:`workspaces/${workspace}`});
-
-        exec(cmd, {cwd:`workspaces/${workspace}`}, (error, stdout, stderr) => {
-            if (error) {
-                logger.debug(`error: ${error.message}`);
-                return rej(error);
-            }
-            if (stderr) {
-                logger.debug(`stderr: ${stderr}`);
-                return rej(stderr);
-            }
-            logger.debug(`stdout: ${stdout}`);
+        promise_exec(cmd,{cwd:`workspaces/${workspace}`},rej,(stdout)=>{
             res(stdout.split(/\r?\n/).map(b=>b.trim()).filter(b=>b.length>0));
         });
     });
@@ -30,19 +19,7 @@ export function getUnmergedBranches(workspace : string) : Promise<string[]> {
 export function getMergeBase(workspace : string, src : string, dest : string) : Promise<string> {
     return new Promise((res,rej)=>{
         const cmd = `GIT_SSH_COMMAND="ssh -i ./id_rsa" git merge-base ${dest} ${src}`;
-
-        exec(cmd, {cwd:`workspaces/${workspace}`}, (error, stdout, stderr) => {
-            if (error) {
-                logger.debug(`error: ${error.message}`);
-                return rej(error);
-            }
-            if (stderr) {
-                logger.debug(`stderr: ${stderr}`);
-                return rej(stderr);
-            }
-            logger.debug(`stdout: ${stdout}`);
-            res(stdout);
-        });
+        promise_exec(cmd,{cwd:`workspaces/${workspace}`},rej,res);
     });
 }
 
@@ -51,20 +28,9 @@ export function getMergeBase(workspace : string, src : string, dest : string) : 
 export function getFirstCommit(workspace : string, org : string, target : string) : Promise<CommitEntry> {
     return new Promise((res,rej)=>{
         const cmd = `GIT_SSH_COMMAND="ssh -i ./id_rsa" git log ${org}..${target} --oneline`;
-
-        exec(cmd, {cwd:`workspaces/${workspace}`}, (error, stdout, stderr) => {
-            if (error) {
-                logger.debug(`error: ${error.message}`);
-                return rej(error);
-            }
-            if (stderr) {
-                logger.debug(`stderr: ${stderr}`);
-                return rej(stderr);
-            }
-            logger.debug(`stdout: ${stdout}`);
+        promise_exec(cmd,{cwd:`workspaces/${workspace}`},rej,(stdout)=>{
             const lines = stdout.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length > 0);
             const line = lines[lines.length-1]
-
             const match = /^([\S]+)\s.*$/g.exec(line);
             if (!match) rej("Unparseable response: "+line);
             const hash = match[1];
@@ -77,18 +43,25 @@ export function getFirstCommit(workspace : string, org : string, target : string
 export function getCommitDate(workspace : string, commitHash : string) : Promise<string> {
     return new Promise((res,rej)=>{
         const cmd = `GIT_SSH_COMMAND="ssh -i ./id_rsa" git show -s --format=%ci ${commitHash}`;
+        promise_exec(cmd,{cwd:`workspaces/${workspace}`},rej,res);
+    });
+}
 
-        exec(cmd, {cwd:`workspaces/${workspace}`}, (error, stdout, stderr) => {
-            if (error) {
-                logger.debug(`error: ${error.message}`);
-                return rej(error);
-            }
-            if (stderr) {
-                logger.debug(`stderr: ${stderr}`);
-                return rej(stderr);
-            }
-            logger.debug(`stdout: ${stdout}`);
-            res(stdout); // return the last line
-        });
+//cmd: command to run
+//opt: options to pass to exec
+//rej: rejection handler
+//res: stdout handler if no error (res, or transform and res, or check error and rej, etc.)
+function promise_exec(cmd: string, opt: ExecOptions, rej: (reason?: any) => void, func: (stdout: string) => void) {
+    exec(cmd,opt, (error, stdout, stderr) => {
+        if (error) {
+            logger.debug(`error: ${error.message}`);
+            return rej(error);
+        }
+        if (stderr) {
+            logger.debug(`stderr: ${stderr}`);
+            return rej(stderr);
+        }
+        logger.debug(`stdout: ${stdout}`);
+        func(stdout);
     });
 }
