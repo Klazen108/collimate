@@ -11,22 +11,42 @@ app.get( "/", ( req, res ) => {
     res.send( "Hello world!" );
 } );
 
-const origin = "origin/development";
-const workspace = "{input your workspace here}";
-getUnmergedBranches(workspace)
-.then(res=>{
-    res.forEach(dest=>{
-        getFirstCommit(workspace,"origin/development",dest)
-        .then(commit=>{
-            getCommitDate(workspace,commit.hash)
-            .then(date => {
-                logger.info(`${dest} was branched from ${origin} on ${date} in commit ${commit.line}`);
+app.get( "/:workspace", ( req, res ) => {
+    const origin = "origin/development";
+    const workspace = req.params.workspace;
+    getUnmergedBranches(workspace)
+    .then(brchs=>{
+        const promises = brchs.map(dest=>{
+            return getFirstCommit(workspace,"origin/development",dest)
+            .then(commit=>{
+                return getCommitDate(workspace,commit.hash)
+                .then(date => {
+                    logger.debug(`${dest} was branched from ${origin} on ${date} in commit ${commit.line}`);
+                    return {dest,origin,date,commit,success:true};
+                })
+                .catch(err=>{
+                    logger.error("getCommitDate Error",err);
+                    return {dest,err,success:false};
+                });
             })
-            .catch(err=>logger.error("getCommitDate Error",err));
+            .catch(err=>{
+                logger.error("getFirstCommit Error",err);
+                return {dest,err,success:false};
+            });
+        });
+        Promise.all(promises).then((results) => {
+            res.send(results);
         })
-        .catch(err=>logger.error("getFirstCommit Error",err));
+    }).catch(err=>{
+        if (err && err.code && err.code === "ENOENT") {
+            // getUnmergedBranches returns ENOENT if we attempt to use a cwd that does not exist.
+            res.status(404).send("Invalid workspace: "+workspace);
+        } else {
+            logger.error("getUnmergedBranches Error",err);
+            res.status(500).send(err);
+        }
     });
-}).catch(err=>logger.error("getUnmergedBranches Error",err));
+} );
 
 // start the Express server
 app.listen( port, () => {

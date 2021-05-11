@@ -10,6 +10,8 @@ export function getUnmergedBranches(workspace : string) : Promise<string[]> {
     return new Promise((res,rej)=>{
         const cmd = 'GIT_SSH_COMMAND="ssh -i ./id_rsa" git --no-pager branch -r --no-merged development';
 
+        logger.debug("getUnmergedBranches",{cmd,cwd:`workspaces/${workspace}`});
+
         exec(cmd, {cwd:`workspaces/${workspace}`}, (error, stdout, stderr) => {
             if (error) {
                 logger.debug(`error: ${error.message}`);
