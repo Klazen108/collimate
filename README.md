@@ -29,7 +29,7 @@ root
 
 To start in dev mode, use `npm run start`
 
-To request repository data for `repo1`, send a request to `host:8080/repo1`. Same for `repo2`.
+To request repository data for `repo1`, send a request to `host:8080/workspaces/repo1`. Same for `repo2`.
 
 # About
 

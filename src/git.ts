@@ -47,10 +47,10 @@ export function getCommitDate(workspace : string, commitHash : string) : Promise
     });
 }
 
-//cmd: command to run
-//opt: options to pass to exec
-//rej: rejection handler
-//res: stdout handler if no error (res, or transform and res, or check error and rej, etc.)
+// cmd: command to run
+// opt: options to pass to exec
+// rej: rejection handler
+// res: stdout handler if no error (res, or transform and res, or check error and rej, etc.)
 function promise_exec(cmd: string, opt: ExecOptions, rej: (reason?: any) => void, func: (stdout: string) => void) {
     exec(cmd,opt, (error, stdout, stderr) => {
         if (error) {

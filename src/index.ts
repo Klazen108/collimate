@@ -6,12 +6,13 @@ import {getUnmergedBranches,getFirstCommit,getCommitDate} from "./git";
 const app = express();
 const port = 8080; // default port to listen
 
-// define a route handler for the default home page
-app.get( "/", ( req, res ) => {
-    res.send( "Hello world!" );
-} );
 
-app.get( "/:workspace", ( req, res ) => {
+// define a route handler for the default home page
+// app.get( "/", ( req, res ) => {
+//     res.send( "Hello world!" );
+// } );
+
+app.get( "/workspaces/:workspace", ( req, res ) => {
     const origin = "origin/development";
     const workspace = req.params.workspace;
     getUnmergedBranches(workspace)
@@ -47,6 +48,8 @@ app.get( "/:workspace", ( req, res ) => {
         }
     });
 } );
+
+app.use(express.static('public'))
 
 // start the Express server
 app.listen( port, () => {
