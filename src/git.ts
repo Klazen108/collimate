@@ -16,6 +16,16 @@ export function getUnmergedBranches(workspace : string) : Promise<string[]> {
     });
 }
 
+export function getMergedBranches(workspace : string, dest : string) : Promise<string[]> {
+    return new Promise((res,rej)=>{
+        const cmd = `GIT_SSH_COMMAND="ssh -i ./id_rsa" git --no-pager branch -r --merged ${dest}`;
+        logger.debug("getMergedBranches",{cmd,cwd:`workspaces/${workspace}`});
+        promise_exec(cmd,{cwd:`workspaces/${workspace}`},rej,(stdout)=>{
+            res(stdout.split(/\r?\n/).map(b=>b.trim()).filter(b=>b.length>0));
+        });
+    });
+}
+
 export function getMergeBase(workspace : string, src : string, dest : string) : Promise<string> {
     return new Promise((res,rej)=>{
         const cmd = `GIT_SSH_COMMAND="ssh -i ./id_rsa" git merge-base ${dest} ${src}`;
